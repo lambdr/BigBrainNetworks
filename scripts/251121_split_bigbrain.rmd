@@ -1,0 +1,107 @@
+---
+title: "Split Bigbrain Data"
+output: html_document
+date: "2025-11-24"
+---
+
+```{r setup, message=FALSE}
+library(tidyverse)
+library(data.table)
+
+setwd("/Users/lambdr/Documents/network_discovery_project/code")
+```
+
+### Split bigbrain
+First I load the data that was created with Kailash's script.
+```{r load data}
+joined_data <- readRDS("../data/251130_joined_data_results.rds")
+```
+
+I checked that MAPLE works for cases where we have two instruments. So we only need to remove the pairs with a single instrument.
+```{r filter data to only more than one instrument}
+filtered_data <- joined_data %>% 
+  dplyr::mutate(n_inst = map_dbl(inst, length)) %>% 
+  dplyr::filter(n_inst >= 2) %>% 
+  dplyr::select(-n_inst) %>% 
+  dplyr::filter(Outcome %in% Exposure)
+```
+
+Next, I create a list of all exposure-outcome pairs 
+```{r exposure-outcome pairs}
+ldsc_ref <- readRDS("../data/join_bigbrain_results.rds") %>% 
+  dplyr::mutate(n_inst = map_dbl(inst, length)) %>% 
+  dplyr::filter(n_inst >= 2) %>% 
+  dplyr::select(-n_inst) %>% 
+  dplyr::filter(Outcome %in% Exposure) %>% 
+  dplyr::select(Exposure, Outcome, exp_out) %>% 
+  dplyr::mutate(
+    first_var = dplyr::case_when(
+      Exposure <= Outcome ~ Exposure, 
+      TRUE ~ Outcome),
+    second_var = dplyr::case_when(
+      first_var == Exposure ~ Outcome,
+      TRUE ~ Exposure),
+    sorted_pair = paste0(first_var, "_", second_var)
+  ) %>% 
+  dplyr::select(exp_out, sorted_pair)
+```
+
+### Split gene pairs for LDSC 
+
+Split and save gene pairs. Approx 1680 gene pairs per file.
+```{r split gene pairs}
+ldsc_list <- ldsc_ref %>% 
+  dplyr::pull(sorted_pair) %>% 
+  unique() %>% 
+  tibble::as_tibble() %>% 
+  dplyr::rename(gene_pair=value)
+
+n_pairs = nrow(ldsc_list)
+n_increment = ceiling(n_pairs/1000)
+
+for (i in 1:1000){
+  start_index = (i-1)*n_increment + 1
+  end_index = i*n_increment
+  
+  ldsc_list %>% 
+    dplyr::slice(start_index:end_index) %>% 
+    write_rds(paste0("../data/251121_split_gene_pairs/gene_pairs_part_", sprintf("%04d", i), ".rds"))
+}
+```
+
+Now we add gene pair info to reference data. This preserves the information of which "part" the corresponding sample correlation matrix will be in.
+```{r add}
+filtered_data <- ldsc_list %>% 
+  dplyr::mutate(reference_chunk = ceiling(row_number()/n_increment)) %>% 
+  right_join(ldsc_ref, by = join_by(gene_pair == sorted_pair)) %>% 
+  dplyr::mutate(flipped_pair = !(gene_pair == exp_out)) %>% 
+  right_join(filtered_data, by = dplyr::join_by(exp_out))
+```
+
+### Split summary stats
+This code chunk splits the matched features based upon which gene pair file the correspond to. This means that each jobs will only need to load a single list of sample-correlation matrices.
+```{r split matched data}
+for (i in 1:1000){
+  start_row = (i-1)*n_increment + 1
+  end_row = i*n_increment
+  
+  filtered_data %>% 
+    dplyr::filter(reference_chunk == i) %>% 
+    write_rds(paste0("../data/251124_split_rds_files/bigbrain_part_", sprintf("%04d", i), ".rds"))
+}
+```
+
+Save all gene pairs for matrix QC.
+
+```{r save all gene pairs and features}
+filtered_data %>% 
+  select(exp_out, inst) %>% 
+  mutate(n_inst = map_dbl(inst, length)) %>% 
+  select(-inst) %>% 
+  saveRDS("../data/251128_all_gene_pairs.rds")
+
+filtered_data$Exposure %>% 
+  unique() %>% 
+  write.table("../data/251128_all_feature_list.tsv", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+

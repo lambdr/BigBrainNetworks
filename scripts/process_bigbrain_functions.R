@@ -161,7 +161,7 @@ read_bigbrain <- function(filename, beta_col, p_col, id_col = "variant_id",
   # de-duplicate inst_df
   inst_df <- dplyr::distinct(inst_df)
   
-  list(result_df = result_df, inst_df = inst_df)
+  return(list(result_df = result_df, inst_df = inst_df))
 }
 
 join_bigbrain <- function(...) {
