@@ -7,23 +7,24 @@ This is the workflow to go from the *trans* summary stats to MAPLE outputs.
 1B. QTL extraction
   - Next identify a list of variants that are QTLs for any feature of interest. Then extract rows for all features with these QTLs. 
   - Then, split the summary stats into chunks to parallelize the read bigbrain step.
-  - Example shell script:
 2. Read & Join Bigbrain
   - Run read and join bigbrain to get the matched instrument sets for MR
   - Rscript: 251113_loop_bigbrain.R
   - Example shell script: maple_analysis_step2.sh
-3. Split data for 
+3. Split data for parallel compute 
   - I then split the data to parallelize Steps 5 & 6. I did this quickly in an Rmarkdown file.
   - RMD: 251121_split_bigbrain.rmd
 4. LD stuff
   - LD scores and the LD matrix are necessary for the following steps. Here is an example shell file with the code for computing them.
-  - shell script with plink and ldsc
+  - Plink and LD commands are given in plink_commands.txt
 5. LDSC
   - R script: 251121_calculate_sample_correlation.R
-  - Example shell script: 
   - Supplemental code: 251121_modified_est_SS.R
 6. MAPLE
+  - Run MAPLE on the output of Step 3, using the sample correlation outputs from Step 5
   - R script: 251124_run_maple_on_bigbrain.R
   - Example shell script:
 6. Extract out features
+  - Updated to give total causal effects, std errors, and correlated pleiotropy
   - R script: 251128_combine_maple_fits.R
+  - Example shell script: maple_analysis_step6.sh

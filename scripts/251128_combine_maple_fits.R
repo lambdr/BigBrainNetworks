@@ -7,17 +7,17 @@
 args <- commandArgs(trailingOnly = TRUE)
 input_dir <- args[1]
 output_dir <- args[2]
+feature_list <- args[3]
 
 start_time <- Sys.time()
 
 # setup
-setwd("~/Documents/network_discovery_project/")
 library(magrittr)
 
 # load file list and gene list 
 ## the gene list is output by 251121_split_bigbrain.rmd
 input_files <- list.files(input_dir, full.names = TRUE)
-gene_list <- data.table::fread("data/251128_all_feature_list.tsv", header = FALSE) %>% 
+gene_list <- data.table::fread(feature_list, header = FALSE) %>% 
   dplyr::pull(1)
 
 # initialize matrices
@@ -35,6 +35,10 @@ for (maple_file in input_files) {
       stringr::str_split("_") %>% 
       unlist()
     
+    # if a feature is not part of the matrix, skip
+    if(!all(working_pair %in% gene_list)) next
+    
+    # update matrices
     tce_matrix[working_pair[1], working_pair[2]] <- working_file[[gene_pair]]$causal_effect
     se_matrix[working_pair[1], working_pair[2]] <- working_file[[gene_pair]]$cause.se
     correlated_effect_matrix[working_pair[1], working_pair[2]] <- working_file[[gene_pair]]$correlated_pleiotropy_effect

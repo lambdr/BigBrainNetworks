@@ -1,0 +1,40 @@
+## Plink Commands
+# Filter from 11M variants to 560k variants
+plink \
+  --bfile merged_final_ALL \
+  --extract ../251114_list_of_variants.txt \
+  --make-bed \
+  --out merged_560836_variants
+  
+  
+# Compute LD matrix for instruments only
+plink \
+  --bfile merged_560836_variants \
+  --extract ../251114_instrument_list.txt \
+  --r square \
+  --out merged_560836_variants_ld
+
+
+# Calculate LD Scores for all
+python ldsc.py \
+  --bfile ~/Documents/network_discovery_project/data/plink_files/merged_560836_variants \
+  --l2 \
+  --ld-wind-kb 5000 \
+  --out 251116_bigbrain_ldscores_for_560836_variants
+
+
+# Split LDSC into full directory
+INFILE="251116_bigbrain_ldscores_for_560836_variants.l2.ldscore.gz"
+
+# Extract header
+header=$(gzcat "$INFILE" | head -n1)
+
+# Loop over chromosomes 1–22
+for chr in $(seq 1 22); do
+echo "Creating ${chr}.l2.ldscore.gz..."
+
+(
+  echo "$header"
+  gzcat "$INFILE" | awk -v c=$chr 'NR>1 && $1 == c'
+) | gzip > "/Users/lambdr/Documents/network_discovery_project/data/251117_in_sample_ldscores${chr}.l2.ldscore.gz"
+done
