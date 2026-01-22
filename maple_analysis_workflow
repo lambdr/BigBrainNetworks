@@ -24,7 +24,7 @@ This is the workflow to go from the *trans* summary stats to MAPLE outputs.
   - Run MAPLE on the output of Step 3, using the sample correlation outputs from Step 5
   - R script: 251124_run_maple_on_bigbrain.R
   - Example shell script:
-6. Extract out features
+7. Extract out features
   - Updated to give total causal effects, std errors, and correlated pleiotropy
   - R script: 251128_combine_maple_fits.R
   - Example shell script: maple_analysis_step6.sh
